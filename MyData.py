@@ -1,0 +1,3 @@
+class MyData:
+    username = ""
+    password = ""

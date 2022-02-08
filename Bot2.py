@@ -1,5 +1,6 @@
 import time
 import datetime
+from selenium.webdriver.common.by import By
 from selenium import webdriver
 from MyData import MyData
 import requests
@@ -28,20 +29,20 @@ driver = webdriver.Chrome(PATH)
 log_message("Signing in esa.dvfu.ru...")
 driver.get("https://esa.dvfu.ru/?bu=https://poseidon.dvfu.ru/index.php")
 
-username = driver.find_element_by_id("inputAccount")  #
-password = driver.find_element_by_id("inputPwd")  # Находим поля авторизации
+username = driver.find_element(By.ID, "inputAccount")  #
+password = driver.find_element(By.ID, "inputPwd")  # Находим поля авторизации
 
 username.send_keys(MyData.username)  #
 password.send_keys(MyData.password)  # Вводим данные в поля авторизации
 
-login_button = driver.find_element_by_name("login-button")  # Находим кнопку "Войти"
+login_button = driver.find_element(By.NAME, "login-button")  # Находим кнопку "Войти"
 login_button.click()
 
 # -------------------------------Poseidon index-------------------------------------------------------
 driver.implicitly_wait(5)
 log_message("Getting to book page...")
 
-book = driver.find_element_by_id("block-1").find_element_by_tag_name("a")  # Находим кнопку "Запись на стирку"
+book = driver.find_element(By.ID, "block-1").find_element(By.TAG_NAME, "a")  # Находим кнопку "Запись на стирку"
 book.click()
 
 # -------------------------------Getting data from book page------------------------------------------

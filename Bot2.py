@@ -8,7 +8,7 @@ import bs4
 import json
 from fake_useragent import UserAgent
 
-PATH = "C:/Program Files (x86)/chromedriver.exe"
+PATH = "C:/Program Files (x86)/chromedriver.exe"  # Путь к драйверу. Изменить под себя
 LOG_FILE_PATH = "log.txt"
 
 
@@ -57,7 +57,7 @@ headers = {
 }
 
 params = {
-    "date": "Thu Feb 10 2022"
+    "date": "Thu Feb 10 2022"  # День, на который хотим записаться. Изменить под себя
 }
 
 # Переносим все куки из браузера в requests.Session
@@ -66,6 +66,7 @@ session = requests.Session()
 for c in cookies.items():
     session.cookies.set(c[0], c[1])
 
+# Ждём, когда день откроется для записи
 day_is_available = False
 while not day_is_available:
     response = session.get('https://poseidon.dvfu.ru/includes/get-events.php', headers=headers, params=params)
@@ -82,7 +83,7 @@ with open("day_table.txt", "w", encoding="utf-8") as file:
 
 # -------------------------------Booking time---------------------------------------------------------
 log_message("Booking time")
-data_array = [  # Список времён, которые хотим занять
+data_array = [  # Список времён, которые хотим занять. Изменить под себя
     {
         "start": "10-02-2022 07:00:00",
         "end": "10-02-2022 08:00:00",
@@ -104,7 +105,7 @@ data_array = [  # Список времён, которые хотим заня�
         "number": "2"
     }]
 
-for data in data_array:
+for data in data_array:  # Проходимся по каждому времени, пытаясь его занять
     log_message(f"Booking time from {data['start']} to {data['end']} on machine #{data['number']}...")
     book_response = session.post("https://poseidon.dvfu.ru/includes/check-events.php", headers=headers, data=data)
     json_response = json.loads(book_response.text)

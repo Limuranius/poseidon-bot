@@ -3,7 +3,7 @@ import time
 import datetime
 import multiprocessing
 
-execute_at = "15:58:00"  # Время, во сколько запустится код
+execute_at = "17:59:00"  # Время, во сколько запустится код
 
 
 def prevent_sleep():
@@ -37,6 +37,7 @@ def main():
         if curr_time >= target_time:
             sleep_preventer.terminate()
             break
+        time.sleep(0.5)
     import Bot2
 
 

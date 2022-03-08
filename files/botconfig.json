@@ -1,0 +1,15 @@
+{
+  "Date": "10.03.2022",
+  "PreferredTimeLength": "2:00",
+  "PreferredTimeIntervals": [
+    {
+      "start": "04:00",
+      "end": "08:00"
+    },
+    {
+      "start": "20:00",
+      "end": "23:30"
+    }
+  ],
+  "POST_COUNT_BEFORE_UPDATE": 3
+}

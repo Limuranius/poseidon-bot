@@ -57,7 +57,7 @@ headers = {
 }
 
 params = {
-    "date": "Thu Feb 10 2022"  # День, на который хотим записаться. Изменить под себя
+    "date": "Sat Mar 05 2022"  # День, на который хотим записаться. Изменить под себя
 }
 
 # Переносим все куки из браузера в requests.Session
@@ -72,7 +72,7 @@ while not day_is_available:
     response = session.get('https://poseidon.dvfu.ru/includes/get-events.php', headers=headers, params=params)
     if response.text == "":  # День ещё не открылся
         log_message("Day is not available yet")
-        time.sleep(2)
+        time.sleep(1)
     else:
         log_message("Got data!")
         day_is_available = True
@@ -85,23 +85,38 @@ with open("day_table.txt", "w", encoding="utf-8") as file:
 log_message("Booking time")
 data_array = [  # Список времён, которые хотим занять. Изменить под себя
     {
-        "start": "10-02-2022 07:00:00",
-        "end": "10-02-2022 08:00:00",
+        "start": "10-03-2022 06:00:00",
+        "end": "10-03-2022 08:00:00",
         "number": "2"
     },
     {
-        "start": "10-02-2022 08:00:00",
-        "end": "10-02-2022 09:00:00",
+        "start": "10-03-2022 06:30:00",
+        "end": "10-03-2022 08:00:00",
         "number": "2"
     },
     {
-        "start": "10-02-2022 09:00:00",
-        "end": "10-02-2022 10:00:00",
+        "start": "10-03-2022 04:00:00",
+        "end": "10-03-2022 06:00:00",
         "number": "2"
     },
     {
-        "start": "10-02-2022 10:00:00",
-        "end": "10-02-2022 11:00:00",
+        "start": "10-03-2022 21:00:00",
+        "end": "10-03-2022 23:30:00",
+        "number": "2"
+    },
+    {
+        "start": "10-03-2022 20:30:00",
+        "end": "10-03-2022 23:00:00",
+        "number": "2"
+    },
+    {
+        "start": "10-03-2022 20:00:00",
+        "end": "10-03-2022 23:00:00",
+        "number": "2"
+    },
+    {
+        "start": "10-03-2022 21:00:00",
+        "end": "10-03-2022 23:00:00",
         "number": "2"
     }]
 
@@ -114,6 +129,3 @@ for data in data_array:  # Проходимся по каждому времен
         break
     else:
         log_message("Failed")
-        time.sleep(1)
-
-

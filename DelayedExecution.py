@@ -2,8 +2,7 @@ import pyautogui
 import time
 import datetime
 import multiprocessing
-
-execute_at = "17:59:00"  # Время, во сколько запустится код
+import Bot
 
 
 def prevent_sleep():
@@ -28,7 +27,7 @@ def get_curr_date_with_custom_time(time_str: str) -> datetime.datetime:
     return datetime.datetime.combine(d, t)
 
 
-def main():
+def wait(execute_at: str):
     target_time = get_curr_date_with_custom_time(execute_at)
     sleep_preventer = multiprocessing.Process(target=prevent_sleep)
     sleep_preventer.start()
@@ -38,8 +37,4 @@ def main():
             sleep_preventer.terminate()
             break
         time.sleep(0.5)
-    import Bot2
-
-
-if __name__ == "__main__":
-    main()
+    Bot.run()

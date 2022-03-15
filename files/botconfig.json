@@ -1,7 +1,9 @@
 {
-  "Date": "10.03.2022",
-  "PreferredTimeLength": "2:00",
-  "PreferredTimeIntervals": [
+  "ExecuteAt": "15:59:00",
+  "Date": "17.03.2022",
+  "MinTimeLength": "2:00",
+  "MaxTimeLength": "2:00",
+  "TimeIntervals": [
     {
       "start": "04:00",
       "end": "08:00"
@@ -11,5 +13,6 @@
       "end": "23:30"
     }
   ],
-  "POST_COUNT_BEFORE_UPDATE": 3
+  "POST_COUNT_BEFORE_UPDATE": 3,
+  "LOG_SCHEDULES": false
 }

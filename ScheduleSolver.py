@@ -12,7 +12,8 @@ class ScheduleSolver:
 
         self.config_json = None
         self.date = None
-        self.pref_len = None
+        self.min_pref_len = None
+        self.max_pref_len = None
         self.pref_intervals = None
         self.read_config()
 
@@ -28,7 +29,7 @@ class ScheduleSolver:
         self.updatePreferredTimeLength()
 
     def updatePreferredTimeIntervals(self):
-        intervals = [(i["start"], i["end"]) for i in self.config_json["PreferredTimeIntervals"]]
+        intervals = [(i["start"], i["end"]) for i in self.config_json["TimeIntervals"]]
         parsed_intervals = []
         for interval in intervals:
             start = datetime.datetime.strptime(interval[0], "%H:%M").time()
@@ -39,8 +40,10 @@ class ScheduleSolver:
         self.pref_intervals = parsed_intervals
 
     def updatePreferredTimeLength(self):
-        hours, minutes = [int(i) for i in self.config_json["PreferredTimeLength"].split(":")]
-        self.pref_len = datetime.timedelta(hours=hours, minutes=minutes)
+        hours, minutes = [int(i) for i in self.config_json["MinTimeLength"].split(":")]
+        self.min_pref_len = datetime.timedelta(hours=hours, minutes=minutes)
+        hours, minutes = [int(i) for i in self.config_json["MaxTimeLength"].split(":")]
+        self.max_pref_len = datetime.timedelta(hours=hours, minutes=minutes)
 
     def getFreeTimeIntervals(self) -> list[datePair]:
         intervals = []
@@ -57,7 +60,7 @@ class ScheduleSolver:
         new_intervals = []
         for interval in intervals:
             dt = interval[1] - interval[0]
-            if dt >= self.pref_len:
+            if self.min_pref_len <= dt <= self.max_pref_len:
                 new_intervals.append(interval)
         return new_intervals
 

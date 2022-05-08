@@ -1,0 +1,19 @@
+{
+  "ExecuteAt": "15:59:00",
+  "Date": "10.05.2022",
+  "MinTimeLength": "2:30",
+  "MaxTimeLength": "3:00",
+  "MachineNumber": "2",
+  "TimeIntervals": [
+    {
+      "start": "07:00",
+      "end": "12:00"
+    },
+    {
+      "start": "20:00",
+      "end": "23:00"
+    }
+  ],
+  "POST_COUNT_BEFORE_UPDATE": 3,
+  "LOG_SCHEDULES": true
+}

@@ -1,35 +1,36 @@
 import time
 import datetime
-from MyData import MyData
 from ScheduleSolver import ScheduleSolver
 import requests
 import bs4
 import json
 from fake_useragent import UserAgent
-from paths import *
+from Paths import SCHEDULE_PATH, SCHEDULE_LOGS_PATH
+from ConfigManager import ConfigManager
+from Logger import LoggerInterface
+import pyautogui
+import threading
+import multiprocessing
 
 
 class Bot:
-    def __init__(self):
+    session: requests.Session
+    ua: UserAgent
+    poseidon_headers: dict
+    config_manager: ConfigManager
+    solver: ScheduleSolver
+    logger: LoggerInterface
+
+    def __init__(self, config_manager: ConfigManager, logger: LoggerInterface):
         self.session = requests.Session()
         self.ua = UserAgent()
-        self.poseidon_headers = None
-
-        self.solver = ScheduleSolver()  # Вычисляет подходящие времена
-        self.date = None  # Дата, на которую записываемся
-        self.post_count = None  # Сколько запросов отправится перед тем, как бот обновить таблицу занятых ячеек
-        self.log_schedules = None  # Надо ли на каждом обновлении записывать расписание в новый файл
-        self.readConfig()
-
-    def readConfig(self):
-        with open(BOT_CONFIG_PATH, "r") as file:
-            config_json = json.load(file)
-        self.date = datetime.datetime.strptime(config_json["Date"], "%d.%m.%Y").date()
-        self.post_count = config_json["POST_COUNT_BEFORE_UPDATE"]
-        self.log_schedules = config_json["LOG_SCHEDULES"]
+        self.poseidon_headers = {}
+        self.config_manager = config_manager
+        self.solver = ScheduleSolver(self.config_manager)
+        self.logger = logger
 
     def accessBookPage(self) -> None:
-        log_message("Signing in esa.dvfu.ru...")
+        self.logger.log("Signing in esa.dvfu.ru...")
 
         # Заходим на страницу ДВФУ
         response = self.session.get("https://esa.dvfu.ru/", headers={
@@ -42,8 +43,8 @@ class Bot:
         data = {
             "_csrf_univer": page_metas["csrf-token"],
             "csrftoken": page_metas["csrf-token-value"],
-            "username": MyData.username,
-            "password": MyData.password,
+            "username": self.config_manager.username,
+            "password": self.config_manager.password,
             "bu": "https://poseidon.dvfu.ru/index.php",
         }
         self.session.post("https://esa.dvfu.ru/", data=data, headers={
@@ -51,7 +52,7 @@ class Bot:
         })
 
         # Заходим на страницу посейдона
-        log_message("Getting to book page...")
+        self.logger.log("Getting to book page...")
         response = self.session.get("https://poseidon.dvfu.ru/index.php", headers={
             "User-Agent": self.ua.chrome
         })
@@ -69,7 +70,7 @@ class Bot:
         response = self.session.get('https://poseidon.dvfu.ru/includes/get-events.php',
                                     headers=self.poseidon_headers,
                                     params={
-                                        "date": self.date
+                                        "date": self.config_manager.date.strftime("%a %b %d %Y")  # Mon May 02 2022
                                     })
         return response.text
 
@@ -78,48 +79,60 @@ class Bot:
         return json.loads(self.getScheduleStr())
 
     def waitTillDayOpen(self) -> dict:
-        log_message(f"Getting schedule on {self.date}...")
+        self.logger.log(f"Getting schedule on {self.config_manager.date}...")
         while True:
             schedule = self.getScheduleStr()
             if schedule == "":  # День ещё не открылся
-                log_message("Day is not available yet")
+                self.logger.log("Day is not available yet")
                 time.sleep(1)
             else:
-                log_message("Day opened!")
+                self.logger.log("Day opened!")
                 return json.loads(schedule)
 
     def updateScheduleFile(self, sch_json: dict) -> None:
-        log_message("Updating schedule.json")
+        self.logger.log("Updating schedule.json")
         with open(SCHEDULE_PATH, "w") as file:
             json.dump(sch_json, file)
-        if self.log_schedules:
-            with open(f"{LOGS_FOLDER}/{datetime.datetime.now().strftime('%d%m%Y %H.%M.%S.%f')}.json", "w") as file:
+        if self.config_manager.log_schedules:
+            with open(f"{SCHEDULE_LOGS_PATH}/{datetime.datetime.now().strftime('%d%m%Y %H.%M.%S.%f')}.json",
+                      "w") as file:
                 json.dump(sch_json, file, indent=3, ensure_ascii=False)
         self.solver.read_schedule()
 
     def tryBookTime(self) -> bool:
         fmt = "%d-%m-%Y %H:%M:%S"  # Например, 05-03-2022 07:00:00
         intervals = self.solver.getPerfectMatches()
-        for i in range(min(self.post_count, len(intervals))):
+        for i in range(min(self.config_manager.post_count, len(intervals))):
             interval = intervals[i]
             data = {
                 "start": interval[0].strftime(fmt),
                 "end": interval[1].strftime(fmt),
-                "number": "2",  # Номер машинки
+                "number": str(self.config_manager.machine_number),  # Номер машинки
             }
-            log_message(f"Booking time from {data['start']} to {data['end']} on machine #{data['number']}...")
+            self.logger.log(f"Booking time from {data['start']} to {data['end']} on machine #{data['number']}...")
             book_response = self.session.post("https://poseidon.dvfu.ru/includes/check-events.php",
                                               headers=self.poseidon_headers,
                                               data=data)
             book_response = json.loads(book_response.text)
             if book_response["success"]:
-                log_message("Successful!")
+                self.logger.log("Successful!")
                 return True
             else:
-                log_message("Failed")
+                self.logger.log("Failed")
         return False
 
+    def waitUntil(self, exec_time: datetime.time):
+        self.logger.log(f"Ждём до: {exec_time}")
+        sleep_preventer = multiprocessing.Process(target=prevent_sleep)
+        sleep_preventer.start()
+        while datetime.datetime.today().time() < exec_time:
+            time.sleep(1)
+        sleep_preventer.terminate()
+        self.logger.log(f"Дождались!")
+
     def run(self):
+        self.waitUntil(self.config_manager.exec_at)
+
         self.accessBookPage()
 
         curr_schedule = self.waitTillDayOpen()
@@ -130,26 +143,24 @@ class Bot:
             success = self.tryBookTime()
             self.updateScheduleFile(self.getScheduleJSON())
             if len(self.solver.getPerfectMatches()) == 0:
-                log_message("No matching times left. Task failed! Good luck next week!")
+                self.logger.log("No matching times left. Task failed! Good luck next week!")
                 break
-        log_message("Process finished.")
+        self.logger.log("Process finished.")
+
+
+def prevent_sleep():
+    """
+    Не даёт компу уснуть
+    """
+    interval = 240
+    while True:
+        pyautogui.press("volumeup")
+        time.sleep(0.5)
+        pyautogui.press("volumedown")
+        time.sleep(interval)
 
 
 def get_metas(response_text: str) -> dict[str, str]:
     soup = bs4.BeautifulSoup(response_text, features="html.parser")
     metas = soup.find_all("meta")
     return {meta.get("name"): meta.get("content") for meta in metas}
-
-
-def log_message(message: str):
-    with open(LOG_FILE_PATH, "a") as file:
-        file.write(f"{datetime.datetime.now()}   {message}\n")
-
-
-def run():
-    bot = Bot()
-    bot.run()
-
-
-if __name__ == "__main__":
-    run()

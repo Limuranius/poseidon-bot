@@ -1,0 +1,209 @@
+WindowsManager:
+    login_win: login_win
+    config_win: config_win
+    run_win: run_win
+
+    LoginWindow:
+        id: login_win
+    ConfigWindow:
+        id: config_win
+    RunWindow:
+        id: run_win
+
+
+<LoginWindow>:
+    name: "login_win"
+    username_box: username_box
+    password_box: password_box
+
+    BoxLayout:
+        orientation: "vertical"
+
+        LabelInputBox:
+            id: username_box
+            label_text: "Логин: "
+
+        LabelInputBox:
+            id: password_box
+            label_text: "Пароль: "
+
+        BoxLayout:
+            orientation: "horizontal"
+
+            Button:
+                text: "Сохранить"
+                on_release:
+                    root.btn_save()
+            Button:
+                text: "Далее"
+                on_release:
+                    app.root.current = "config_win"
+                    root.manager.transition.direction = "left"
+
+
+<ConfigWindow>:
+    name: "config_win"
+    exec_at_box: exec_at_box
+    date_box: date_box
+    min_len_box: min_len_box
+    max_len_box: max_len_box
+    machine_number_box: machine_number_box
+    time_intervals_container: time_intervals_container
+
+    ScrollView:
+        BoxLayout:
+            orientation: "vertical"
+            size_hint_y: None
+            height: self.minimum_height
+
+            LabelInputBox:
+                id: exec_at_box
+                label_text: "Запустить в: "
+
+            LabelInputBox:
+                id: date_box
+                label_text: "Записаться на (дата): "
+
+            BoxLayout:
+                orientation: "vertical"
+                size_hint: 1, None
+                height: 150
+
+                Label:
+                    text: "Длительность: "
+                BoxLayout:
+                    orientation: "horizontal"
+
+                    LabelInputBox:
+                        id: min_len_box
+                        label_text:  "От: "
+
+                    LabelInputBox:
+                        id: max_len_box
+                        label_text: "До: "
+
+            LabelInputBox:
+                id: machine_number_box
+                label_text: "Номер машинки"
+
+            BoxLayout:
+                orientation: "vertical"
+                padding: 20
+                size_hint_y: None
+                height: self.minimum_height
+                Label:
+                    text: "Время, на которое записываемся"
+                BoxLayout:
+                    id: time_intervals_container
+                    orientation: "vertical"
+                    size_hint_y: None
+                    height: self.minimum_height
+                Button:
+                    text: "Добавить интервал"
+                    on_press:
+                        root.append_time_interval_form()
+
+            Button:
+                text: "Дополнительные настройки"
+
+            BoxLayout:
+                orientation: "horizontal"
+                size_hint_y: None
+
+                Button:
+                    text: "Назад"
+                    on_release:
+                        app.root.current = "login_win"
+                        root.manager.transition.direction = "right"
+                Button:
+                    text: "Сохранить"
+                    on_release:
+                        root.btn_save()
+                Button:
+                    text: "Далее"
+                    on_release:
+                        app.root.current = "run_win"
+                        root.manager.transition.direction = "left"
+
+
+<RunWindow>:
+    name: "run_win"
+    output_label: output_label
+
+    BoxLayout:
+        orientation: "vertical"
+
+        ScrollView:
+            Label:
+                id: output_label
+                text: "Лог сообщений:\n"
+                text_size: self.width, None
+                size: self.texture_size
+                size_hint: 1, None
+                halign: "left"
+                valign: "top"
+                font_size: 20
+
+        BoxLayout:
+            size_hint: 1, 0.2
+            orientation: "horizontal"
+            Button:
+                text: "Назад"
+                on_release:
+                    app.root.current = "config_win"
+                    root.manager.transition.direction = "right"
+            Button:
+                text: "Запуск!"
+                on_press:
+                    root.btn_run()
+
+
+<BoxLayout>:
+    padding: 10
+    spacing: 5
+    canvas.before:
+        Color:
+            rgba: 0.2, 0.2, 0.7, 0.3
+        Rectangle:
+            size: self.size
+            pos: self.pos
+
+
+<FromToBox>:
+    orientation: "horizontal"
+    size_hint_y: None
+    from_box: from_box
+    to_box: to_box
+
+    LabelInputBox:
+        id: from_box
+        label_text: "От: "
+
+    LabelInputBox:
+        id: to_box
+        label_text: "До: "
+
+    Button:
+        text: "-"
+        height: 50
+        on_release:
+            app.root.config_win.remove_time_interval_form(root)
+
+
+<LabelInputBox>:
+    orientation: "horizontal"
+    size_hint: 1, None
+    height: 50
+    input_form: input_form
+
+    Label:
+        text: root.label_text
+    TextInput:
+        id: input_form
+        multiline: False
+
+
+<Button>:
+    size_hint: 1, None
+    height: 75
+    background_color: 0.2, 0.2, 0.7, 1

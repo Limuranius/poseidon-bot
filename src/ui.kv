@@ -16,7 +16,7 @@ WindowsManager:
     username_box: username_box
     password_box: password_box
 
-    BoxLayout:
+    MainBox:
         orientation: "vertical"
 
         LabelInputBox:
@@ -27,8 +27,9 @@ WindowsManager:
             id: password_box
             label_text: "Пароль: "
 
-        BoxLayout:
+        ContainerBox:
             orientation: "horizontal"
+            size_hint_y: 1
 
             Button:
                 text: "Сохранить"
@@ -51,7 +52,7 @@ WindowsManager:
     time_intervals_container: time_intervals_container
 
     ScrollView:
-        BoxLayout:
+        MainBox:
             orientation: "vertical"
             size_hint_y: None
             height: self.minimum_height
@@ -64,14 +65,13 @@ WindowsManager:
                 id: date_box
                 label_text: "Записаться на (дата): "
 
-            BoxLayout:
+            ContainerBox:
                 orientation: "vertical"
-                size_hint: 1, None
-                height: 150
+#                height: 150
 
                 Label:
                     text: "Длительность: "
-                BoxLayout:
+                ContainerBox:
                     orientation: "horizontal"
 
                     LabelInputBox:
@@ -86,18 +86,14 @@ WindowsManager:
                 id: machine_number_box
                 label_text: "Номер машинки"
 
-            BoxLayout:
+            ContainerBox:
                 orientation: "vertical"
                 padding: 20
-                size_hint_y: None
-                height: self.minimum_height
                 Label:
-                    text: "Время, на которое записываемся"
-                BoxLayout:
+                    text: "Доступное время"
+                ContainerBox:
                     id: time_intervals_container
                     orientation: "vertical"
-                    size_hint_y: None
-                    height: self.minimum_height
                 Button:
                     text: "Добавить интервал"
                     on_press:
@@ -106,9 +102,8 @@ WindowsManager:
             Button:
                 text: "Дополнительные настройки"
 
-            BoxLayout:
+            ContainerBox:
                 orientation: "horizontal"
-                size_hint_y: None
 
                 Button:
                     text: "Назад"
@@ -130,7 +125,7 @@ WindowsManager:
     name: "run_win"
     output_label: output_label
 
-    BoxLayout:
+    MainBox:
         orientation: "vertical"
 
         ScrollView:
@@ -144,8 +139,8 @@ WindowsManager:
                 valign: "top"
                 font_size: 20
 
-        BoxLayout:
-            size_hint: 1, 0.2
+        ContainerBox:
+#            size_hint: 1, 0.2
             orientation: "horizontal"
             Button:
                 text: "Назад"
@@ -159,8 +154,9 @@ WindowsManager:
 
 
 <BoxLayout>:
-    padding: 10
-    spacing: 5
+#    padding: 10
+#    spacing: 5
+
     canvas.before:
         Color:
             rgba: 0.2, 0.2, 0.7, 0.3
@@ -185,7 +181,7 @@ WindowsManager:
 
     Button:
         text: "-"
-        height: 50
+        height: 100
         on_release:
             app.root.config_win.remove_time_interval_form(root)
 
@@ -193,7 +189,7 @@ WindowsManager:
 <LabelInputBox>:
     orientation: "horizontal"
     size_hint: 1, None
-    height: 50
+    height: 100
     input_form: input_form
 
     Label:
@@ -205,5 +201,16 @@ WindowsManager:
 
 <Button>:
     size_hint: 1, None
-    height: 75
+    height: 150
     background_color: 0.2, 0.2, 0.7, 1
+
+
+<ContainerBox>:
+    size_hint_y: None
+    height: self.minimum_height
+    padding: 10
+    spacing: 5
+
+<MainBox>:
+    padding: 20
+    spacing: 10

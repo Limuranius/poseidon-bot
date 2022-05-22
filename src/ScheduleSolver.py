@@ -2,8 +2,9 @@ import json
 import datetime
 from ConfigManager import ConfigManager
 from Paths import SCHEDULE_PATH
+from typing import Tuple, List
 
-datePair = tuple[datetime.datetime, datetime.datetime]
+datePair = Tuple[datetime.datetime, datetime.datetime]
 
 
 class ScheduleSolver:
@@ -17,7 +18,7 @@ class ScheduleSolver:
         with open(SCHEDULE_PATH, "r") as file:
             self.schedule_json = json.load(file)
 
-    def getFreeTimeIntervals(self) -> list[datePair]:
+    def getFreeTimeIntervals(self) -> List[datePair]:
         intervals = []
         for interval in self.schedule_json["data"][1]["entries"]:
             if interval["isBusy"]:
@@ -28,7 +29,7 @@ class ScheduleSolver:
                 intervals.append((start, max_end))
         return intervals
 
-    def applyPreferredTimeLength(self, intervals: list[datePair]) -> list[datePair]:
+    def applyPreferredTimeLength(self, intervals: List[datePair]) -> List[datePair]:
         new_intervals = []
         for interval in intervals:
             dt = interval[1] - interval[0]
@@ -36,7 +37,7 @@ class ScheduleSolver:
                 new_intervals.append(interval)
         return new_intervals
 
-    def applyPreferredTimeIntervals(self, intervals: list[datePair]) -> list[datePair]:
+    def applyPreferredTimeIntervals(self, intervals: List[datePair]) -> List[datePair]:
         new_intervals = []
         for interval in intervals:
             start, end = interval
@@ -46,7 +47,7 @@ class ScheduleSolver:
                     new_intervals.append((max(start, pref_start), min(end, pref_end)))
         return new_intervals
 
-    def removeOverlappingIntervals(self, intervals: list[datePair]):
+    def removeOverlappingIntervals(self, intervals: List[datePair]):
         new_intervals = []
         intervals = sorted(list(set(intervals)))  # Убираем дупликаты
         for i in range(len(intervals)):
@@ -62,7 +63,7 @@ class ScheduleSolver:
                 new_intervals.append(interv1)
         return new_intervals
 
-    def getPerfectMatches(self) -> list[datePair]:
+    def getPerfectMatches(self) -> List[datePair]:
         intervals = self.getFreeTimeIntervals()
         intervals = self.applyPreferredTimeIntervals(intervals)
         intervals = self.applyPreferredTimeLength(intervals)

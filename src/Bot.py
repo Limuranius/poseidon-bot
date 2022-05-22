@@ -4,18 +4,16 @@ from ScheduleSolver import ScheduleSolver
 import requests
 import bs4
 import json
-from fake_useragent import UserAgent
 from Paths import SCHEDULE_PATH, SCHEDULE_LOGS_PATH
 from ConfigManager import ConfigManager
 from Logger import LoggerInterface
-import pyautogui
-import threading
-import multiprocessing
+from typing import Dict
+
+user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.67 Safari/537.36"
 
 
 class Bot:
     session: requests.Session
-    ua: UserAgent
     poseidon_headers: dict
     config_manager: ConfigManager
     solver: ScheduleSolver
@@ -23,7 +21,6 @@ class Bot:
 
     def __init__(self, config_manager: ConfigManager, logger: LoggerInterface):
         self.session = requests.Session()
-        self.ua = UserAgent()
         self.poseidon_headers = {}
         self.config_manager = config_manager
         self.solver = ScheduleSolver(self.config_manager)
@@ -34,7 +31,7 @@ class Bot:
 
         # Заходим на страницу ДВФУ
         response = self.session.get("https://esa.dvfu.ru/", headers={
-            "User-Agent": self.ua.chrome
+            "User-Agent": user_agent
         })
         # Получаем метатеги страницы
         page_metas = get_metas(response.text)
@@ -48,18 +45,18 @@ class Bot:
             "bu": "https://poseidon.dvfu.ru/index.php",
         }
         self.session.post("https://esa.dvfu.ru/", data=data, headers={
-            "User-Agent": self.ua.chrome
+            "User-Agent": user_agent
         })
 
         # Заходим на страницу посейдона
         self.logger.log("Getting to book page...")
         response = self.session.get("https://poseidon.dvfu.ru/index.php", headers={
-            "User-Agent": self.ua.chrome
+            "User-Agent": user_agent
         })
         # Получаем токены страницы
         page_metas = get_metas(response.text)
         self.poseidon_headers = {
-            "User-Agent": self.ua.chrome,
+            "User-Agent": user_agent,
             "X-CSRF-TOKEN": page_metas["csrf_token"],
             "X-csrftoken": page_metas["csrf-token-value"]
         }
@@ -121,16 +118,13 @@ class Bot:
                 self.logger.log("Failed")
         return False
 
-    def waitUntil(self, exec_time: datetime.time):
+    def waitUntil(self, exec_time: datetime.time) -> None:
         self.logger.log(f"Ждём до: {exec_time}")
-        sleep_preventer = multiprocessing.Process(target=prevent_sleep)
-        sleep_preventer.start()
         while datetime.datetime.today().time() < exec_time:
             time.sleep(1)
-        sleep_preventer.terminate()
         self.logger.log(f"Дождались!")
 
-    def run(self):
+    def run(self) -> None:
         self.waitUntil(self.config_manager.exec_at)
 
         self.accessBookPage()
@@ -148,19 +142,7 @@ class Bot:
         self.logger.log("Process finished.")
 
 
-def prevent_sleep():
-    """
-    Не даёт компу уснуть
-    """
-    interval = 240
-    while True:
-        pyautogui.press("volumeup")
-        time.sleep(0.5)
-        pyautogui.press("volumedown")
-        time.sleep(interval)
-
-
-def get_metas(response_text: str) -> dict[str, str]:
+def get_metas(response_text: str) -> Dict[str, str]:
     soup = bs4.BeautifulSoup(response_text, features="html.parser")
     metas = soup.find_all("meta")
     return {meta.get("name"): meta.get("content") for meta in metas}

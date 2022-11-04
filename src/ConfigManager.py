@@ -1,152 +1,158 @@
 from Paths import USER_DATA_PATH, BOT_CONFIG_PATH
 import datetime
 import json
-from typing import TypedDict, List, Tuple, Dict
+from typing import List, Tuple, Any
+from dataclasses import dataclass
 
 
-class FromToDict(TypedDict):
-    start: str
-    end: str
+@dataclass
+class Config:
+    ExecuteAt: datetime.time  # Время, в которое нужно запустить бота
+    Date: datetime.date  # Дата, на которую бот будет записываться
+    MinTimeLength: datetime.timedelta  # Минимально возможная длительность стирки
+    MaxTimeLength: datetime.timedelta  # Максимально возможная длительность стирки
+    MachineNumber: int  # Номер стиральной машинки
+    TimeIntervals: List[Tuple[datetime.datetime, datetime.datetime]]  # Временные интервалы, в которых бот будет искать
+    POST_COUNT_BEFORE_UPDATE: int  # Сколько раз бот попытается записаться, перед тем, как обновить расписание
+    LOG_SCHEDULES: bool  # Если True, то расписания будут сохранятся в папку с логами
 
 
-class ConfigInterface(TypedDict):
-    ExecuteAt: str
-    Date: str
-    MinTimeLength: str
-    MaxTimeLength: str
-    MachineNumber: int
-    TimeIntervals: List[FromToDict]
-    POST_COUNT_BEFORE_UPDATE: int
-    LOG_SCHEDULES: bool
-
-
-class UserDataInterface(TypedDict):
+@dataclass
+class UserData:
     username: str
     password: str
 
 
-datePair = Tuple[datetime.datetime, datetime.datetime]
+class ConfigJSONEncoder(json.JSONEncoder):
+    """Приводит структуры конфига к виду, необходимому для сериализации в JSON"""
+
+    def default(self, o: Any) -> Any:
+        if isinstance(o, Config):
+            return {
+                "ExecuteAt": o.ExecuteAt.strftime("%H:%M:%S"),
+                "Date": o.Date.strftime("%d.%m.%Y"),
+                "MinTimeLength": self.timedelta_to_str(o.MinTimeLength),
+                "MaxTimeLength": self.timedelta_to_str(o.MaxTimeLength),
+                "MachineNumber": o.MachineNumber,
+                "TimeIntervals": self.serialize_intervals_list(o.TimeIntervals),
+                "POST_COUNT_BEFORE_UPDATE": o.POST_COUNT_BEFORE_UPDATE,
+                "LOG_SCHEDULES": o.LOG_SCHEDULES,
+            }
+        elif isinstance(o, UserData):
+            return {
+                "username": o.username,
+                "password": o.password
+            }
+
+    def timedelta_to_str(self, td: datetime.timedelta):
+        """Приводит datetime.timedelta к виду HH:MM"""
+        seconds = td.total_seconds()
+        hours = round(seconds / 3600)
+        minutes = round(seconds / 60) % 60
+        return "{}:{}".format(hours, minutes)
+
+    def serialize_intervals_list(self, intervals: List[Tuple[datetime.datetime, datetime.datetime]]):
+        res = []
+        for interval in intervals:
+            start = interval[0].strftime("%H:%M")
+            end = interval[1].strftime("%H:%M")
+            res.append({
+                "start": start,
+                "end": end
+            })
+        return res
 
 
 class ConfigManager:
-    config_json: ConfigInterface
-    user_data_json: UserDataInterface
-
-    username: str
-    password: str
-
-    exec_at: datetime.time
-    date: datetime.date
-    min_pref_len: datetime.timedelta
-    max_pref_len: datetime.timedelta
-    machine_number: int
-    time_intervals: List[datePair]
-    post_count: int
-    log_schedules: bool
+    _config: Config
+    _user_data: UserData
 
     def __init__(self):
-        self.__readConfig()
-        self.__readUserData()
-
-    def __readUserData(self) -> None:
-        with open(USER_DATA_PATH, "r") as file:
-            self.user_data_json = json.load(file)
-        self.username = self.user_data_json["username"]
-        self.password = self.user_data_json["password"]
-
-    def __readConfig(self) -> None:
         with open(BOT_CONFIG_PATH, "r") as file:
-            self.config_json = json.load(file)
-        self.exec_at = datetime.datetime.strptime(self.config_json["ExecuteAt"], "%H:%M:%S").time()
-        self.date = datetime.datetime.strptime(self.config_json["Date"], "%d.%m.%Y").date()
-        self.__readPreferredTimeLength()
-        self.machine_number = self.config_json["MachineNumber"]
-        self.__readPreferredTimeIntervals()
-        self.post_count = self.config_json["POST_COUNT_BEFORE_UPDATE"]
-        self.log_schedules = self.config_json["LOG_SCHEDULES"]
+            config_json = json.load(file)
+            self.__readConfig(config_json)
+        with open(USER_DATA_PATH, "r") as file:
+            user_data_json = json.load(file)
+            self.__readUserData(user_data_json)
 
-    def __readPreferredTimeLength(self) -> None:
-        hours, minutes = [int(i) for i in self.config_json["MinTimeLength"].split(":")]
-        self.min_pref_len = datetime.timedelta(hours=hours, minutes=minutes)
-        hours, minutes = [int(i) for i in self.config_json["MaxTimeLength"].split(":")]
-        self.max_pref_len = datetime.timedelta(hours=hours, minutes=minutes)
+    def __readUserData(self, user_data_json: dict) -> None:
+        """Читает json с данными пользователя"""
+        self._user_data.username = user_data_json["username"]
+        self._user_data.password = user_data_json["password"]
 
-    def __readPreferredTimeIntervals(self) -> None:
-        """Парсит значения из поля TimeIntervals из конфига, преобразовывая в объекты класса datetime"""
-        intervals = [(i["start"], i["end"]) for i in self.config_json["TimeIntervals"]]
+    def __readConfig(self, config_json: dict) -> None:
+        """Читает json с конфигом для бота"""
+        self._config.ExecuteAt = datetime.datetime.strptime(config_json["ExecuteAt"], "%H:%M:%S").time()  # 15:59:30
+        self._config.Date = datetime.datetime.strptime(config_json["Date"], "%d.%m.%Y").date()  # 30.06.2022
+        self.__readPreferredTimeLength(config_json)
+        self._config.MachineNumber = config_json["MachineNumber"]
+        self.__readPreferredTimeIntervals(config_json)
+        self._config.POST_COUNT_BEFORE_UPDATE = config_json["POST_COUNT_BEFORE_UPDATE"]
+        self._config.LOG_SCHEDULES = config_json["LOG_SCHEDULES"]
+
+    def __readPreferredTimeLength(self, config_json: dict) -> None:
+        """Читает из конфига поля MinTimeLength и MaxTimeLength и конвертирует их в datetime.timedelta"""
+        hours, minutes = [int(i) for i in config_json["MinTimeLength"].split(":")]  # 01:30
+        self._config.MinTimeLength = datetime.timedelta(hours=hours, minutes=minutes)
+        hours, minutes = [int(i) for i in config_json["MaxTimeLength"].split(":")]  # 03:00
+        self._config.MaxTimeLength = datetime.timedelta(hours=hours, minutes=minutes)
+
+    def __readPreferredTimeIntervals(self, config_json: dict) -> None:
+        """Парсит значения из поля TimeIntervals из конфига, преобразовывая в datetime.datetime"""
+        intervals = [(i["start"], i["end"]) for i in config_json["TimeIntervals"]]
         parsed_intervals = []
         for interval in intervals:
-            start = datetime.datetime.strptime(interval[0], "%H:%M").time()
-            start = datetime.datetime.combine(self.date, start)
+            start = datetime.datetime.strptime(interval[0], "%H:%M").time()  # 13:30
+            start = datetime.datetime.combine(self._config.Date, start)  # Соединяем дату из конфига с временем
             end = datetime.datetime.strptime(interval[1], "%H:%M").time()
-            end = datetime.datetime.combine(self.date, end)
+            end = datetime.datetime.combine(self._config.Date, end)
             parsed_intervals.append((start, end))
-        self.time_intervals = parsed_intervals
+        self._config.TimeIntervals = parsed_intervals
 
     def saveToConfigFile(self) -> None:
         with open(BOT_CONFIG_PATH, "w") as file:
-            json.dump(self.config_json, file, indent=2)
+            json.dump(self._config, file, cls=ConfigJSONEncoder, indent=2)
 
     def saveToUserDataFile(self) -> None:
         with open(USER_DATA_PATH, "w") as file:
-            json.dump(self.user_data_json, file, indent=2)
+            json.dump(self._user_data, file, cls=ConfigJSONEncoder, indent=2)
 
-    def setUsername(self, username: str) -> None:
-        self.username = username
-        self.user_data_json["username"] = username
+    @property
+    def username(self):
+        return self._user_data.username
 
-    def setPassword(self, password: str) -> None:
-        self.password = password
-        self.user_data_json["password"] = password
+    @property
+    def password(self):
+        return self._user_data.password
 
-    def setExecuteAt(self, exec_at: str) -> None:
-        self.exec_at = datetime.datetime.strptime(exec_at, "%H:%M:%S").time()
-        self.config_json["ExecuteAt"] = exec_at
+    @property
+    def ExecuteAt(self):
+        return self._config.ExecuteAt
 
-    def setDate(self, date: str) -> None:
-        self.date = datetime.datetime.strptime(date, "%d.%m.%Y").date()
-        self.config_json["Date"] = date
+    @property
+    def Date(self):
+        return self._config.Date
 
-    def setMinTimeLength(self, min_pref_len: str) -> None:
-        hours, minutes = [int(i) for i in min_pref_len.split(":")]
-        self.min_pref_len = datetime.timedelta(hours=hours, minutes=minutes)
-        self.config_json["MinTimeLength"] = min_pref_len
+    @property
+    def MinTimeLength(self):
+        return self._config.MinTimeLength
 
-    def setMaxTimeLength(self, max_pref_len: str) -> None:
-        hours, minutes = [int(i) for i in max_pref_len.split(":")]
-        self.max_pref_len = datetime.timedelta(hours=hours, minutes=minutes)
-        self.config_json["MaxTimeLength"] = max_pref_len
+    @property
+    def MaxTimeLength(self):
+        return self._config.MaxTimeLength
 
-    def setMachineNumber(self, machine_number: int) -> None:
-        self.machine_number = machine_number
-        self.config_json["MachineNumber"] = machine_number
+    @property
+    def MachineNumber(self):
+        return self._config.MachineNumber
 
-    def setTimeIntervals(self, time_intervals: List[FromToDict]) -> None:
-        self.config_json["TimeIntervals"] = time_intervals
-        self.__readPreferredTimeIntervals()
+    @property
+    def TimeIntervals(self):
+        return self._config.TimeIntervals
 
-    def setPostCount(self, post_count: int) -> None:
-        self.post_count = post_count
-        self.config_json["POST_COUNT_BEFORE_UPDATE"] = post_count
+    @property
+    def POST_COUNT_BEFORE_UPDATE(self):
+        return self._config.POST_COUNT_BEFORE_UPDATE
 
-    def setLogSchedules(self, log_schedules: bool) -> None:
-        self.log_schedules = log_schedules
-        self.config_json["LOG_SCHEDULES"] = log_schedules
-
-    def getExecAtString(self) -> str:
-        return self.config_json["ExecuteAt"]
-
-    def getDateString(self) -> str:
-        return self.config_json["Date"]
-
-    def getMinTimeLengthString(self) -> str:
-        return self.config_json["MinTimeLength"]
-
-    def getMaxTimeLengthString(self) -> str:
-        return self.config_json["MaxTimeLength"]
-
-    def getMachinNumberString(self) -> str:
-        return str(self.config_json["MachineNumber"])
-
-    def getTimeIntervalsString(self) -> List[FromToDict]:
-        return self.config_json["TimeIntervals"]
+    @property
+    def LOG_SCHEDULES(self):
+        return self._config.LOG_SCHEDULES

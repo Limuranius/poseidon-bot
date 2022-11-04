@@ -4,7 +4,7 @@ from ConfigManager import ConfigManager
 from Paths import SCHEDULE_PATH
 from typing import Tuple, List
 
-datePair = Tuple[datetime.datetime, datetime.datetime]
+timeInterval = Tuple[datetime.datetime, datetime.datetime]
 
 
 class ScheduleSolver:
@@ -15,12 +15,14 @@ class ScheduleSolver:
         self.config_manager = config_manager
 
     def read_schedule(self):
+        """Читает расписание определённого дня из json-файла с расписанием"""
         with open(SCHEDULE_PATH, "r") as file:
             self.schedule_json = json.load(file)
 
-    def getFreeTimeIntervals(self) -> List[datePair]:
+    def __getFreeTimeIntervals(self) -> List[timeInterval]:
+        """Из расписания для определённой машинки берёт все незанятые временные промежутки"""
         intervals = []
-        for interval in self.schedule_json["data"][1]["entries"]:
+        for interval in self.schedule_json["data"][self.config_manager.MachineNumber]["entries"]:
             if interval["isBusy"]:
                 continue
             else:
@@ -29,25 +31,28 @@ class ScheduleSolver:
                 intervals.append((start, max_end))
         return intervals
 
-    def applyPreferredTimeLength(self, intervals: List[datePair]) -> List[datePair]:
+    def __applyPreferredTimeLength(self, intervals: List[timeInterval]) -> List[timeInterval]:
+        """Убирает временные промежутки, не подходящие по желаемой длительности"""
         new_intervals = []
         for interval in intervals:
             dt = interval[1] - interval[0]
-            if self.config_manager.min_pref_len <= dt <= self.config_manager.max_pref_len:
+            if self.config_manager.MinTimeLength <= dt <= self.config_manager.MaxTimeLength:
                 new_intervals.append(interval)
         return new_intervals
 
-    def applyPreferredTimeIntervals(self, intervals: List[datePair]) -> List[datePair]:
+    def __applyPreferredTimeIntervals(self, intervals: List[timeInterval]) -> List[timeInterval]:
+        """Убирает временные промежутки, не подходящие под желаемое время"""
         new_intervals = []
         for interval in intervals:
             start, end = interval
-            for pref_interval in self.config_manager.time_intervals:
+            for pref_interval in self.config_manager.TimeIntervals:
                 pref_start, pref_end = pref_interval
                 if start >= pref_start or end <= pref_end:  # Если промежутки хоть как-то пересекаются
-                    new_intervals.append((max(start, pref_start), min(end, pref_end)))
+                    new_intervals.append((max(start, pref_start), min(end, pref_end)))  # Оставляем пересекающуюся часть
         return new_intervals
 
-    def removeOverlappingIntervals(self, intervals: List[datePair]):
+    def __removeOverlappingIntervals(self, intervals: List[timeInterval]):
+        """Убирает временные промежутки, которые полностью перекрываются каким-то промежутком"""
         new_intervals = []
         intervals = sorted(list(set(intervals)))  # Убираем дупликаты
         for i in range(len(intervals)):
@@ -63,9 +68,9 @@ class ScheduleSolver:
                 new_intervals.append(interv1)
         return new_intervals
 
-    def getPerfectMatches(self) -> List[datePair]:
-        intervals = self.getFreeTimeIntervals()
-        intervals = self.applyPreferredTimeIntervals(intervals)
-        intervals = self.applyPreferredTimeLength(intervals)
-        intervals = self.removeOverlappingIntervals(intervals)
+    def getPerfectMatches(self) -> List[timeInterval]:
+        intervals = self.__getFreeTimeIntervals()
+        intervals = self.__applyPreferredTimeIntervals(intervals)
+        intervals = self.__applyPreferredTimeLength(intervals)
+        intervals = self.__removeOverlappingIntervals(intervals)
         return intervals
